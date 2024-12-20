@@ -81,11 +81,3 @@ def main():
                 finally:
                     # Clean up temporary file
                     os.unlink(temp_path)
-
-if __name__ == "__main__":
-    # Check if the script is being run directly
-    if len(sys.argv) > 1 and sys.argv[1] == "run_streamlit":
-        main()
-    else:
-        # Run the Streamlit command
-        subprocess.run(["streamlit", "run", __file__, "run_streamlit"])
