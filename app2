@@ -1,0 +1,134 @@
+import streamlit as st
+import os
+import base64
+from together import Together
+from dotenv import load_dotenv
+import tempfile
+from PIL import Image
+import subprocess
+import sys
+
+# Page configuration
+st.set_page_config(
+    page_title="Image Analysis with Llama",
+    page_icon="🖼️",
+    layout="wide"
+)
+
+# Add custom CSS for better styling
+st.markdown("""
+    <style>
+        .stButton>button {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .upload-text {
+            text-align: center;
+            padding: 20px;
+        }
+        .result-area {
+            background-color: #f0f2f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Title and description
+st.title("🖼️ Image Analysis with Llama")
+st.markdown("Upload an image to get detailed analysis using Llama Vision model.")
+
+# Load environment variables
+load_dotenv()
+TOGETHER_API_KEY = os.environ.get('TOGETHER_API_KEY')
+
+# Initialize Together client
+@st.cache_resource
+def get_together_client():
+    return Together()
+
+client = get_together_client()
+
+# Function to encode the image
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
+# Function to analyze image using Llama
+def get_llama(image_path):
+    with st.spinner("Analyzing image..."):
+        try:
+            base64_image = encode_image(image_path)
+            
+            response = client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "You will be given an image, tell me the details about that image"
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            st.error(f"Error analyzing image: {str(e)}")
+            return None
+
+# Main app layout
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.markdown("### Upload Image")
+    uploaded_file = st.file_uploader("Choose an image file", type=['png', 'jpg', 'jpeg'])
+    
+    if uploaded_file is not None:
+        # Create a temporary file to store the uploaded image
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            temp_path = tmp_file.name
+        
+        # Display the uploaded image
+        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+        
+        # Analyze button
+        if st.button("Analyze Image"):
+            with col2:
+                st.markdown("### Analysis Results")
+                # Get and display analysis
+                analysis = get_llama(temp_path)
+                if analysis:
+                    st.markdown(f"""
+                        <div class="result-area">
+                            {analysis}
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                # Clean up temporary file
+                os.unlink(temp_path)
+
+# Add information about API key requirement
+st.sidebar.title("Setup Instructions")
+st.sidebar.info("""
+    To use this app, you need to:
+    1. Have a Together API key
+    2. Set it in your environment variables as TOGETHER_API_KEY
+    3. Make sure you have all required packages installed
+""")
+
+# Display API status
+if TOGETHER_API_KEY:
+    st.sidebar.success("✅ API Key detected")
+else:
+    st.sidebar.error("❌ API Key not found. Please set your TOGETHER_API_KEY environment variable.")
