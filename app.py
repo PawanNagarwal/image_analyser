@@ -13,7 +13,7 @@ load_dotenv()
 TOGETHER_API_KEY = os.environ.get('api_key')
 
 # Initialize Together client
-client = Together(api_key=TOGETHER_API_KEY)
+client = Together()
 
 # Function to encode the image
 def encode_image(image_path):
