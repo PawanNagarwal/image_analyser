@@ -10,7 +10,7 @@ import sys
 
 # Load environment variables
 load_dotenv()
-TOGETHER_API_KEY = os.getenv('api_key')
+TOGETHER_API_KEY = os.environ.get('api_key')
 
 # Initialize Together client
 client = Together(api_key=TOGETHER_API_KEY)
